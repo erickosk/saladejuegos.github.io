@@ -1,0 +1,25 @@
+/* Ajustes para teléfono y computadora en las páginas de juego */
+html{-webkit-text-size-adjust:100%}
+body{min-height:100vh;min-height:100dvh}
+button,.btn,.opt,.cat,.chip,.key,.lane,.hole,.pad,.mcell,.sc,.tl,.card,.back{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));padding-top:max(22px,env(safe-area-inset-top));padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+.game-host,.panel{max-width:100%}
+.panel{overflow-x:hidden}
+.top{position:sticky;top:0;z-index:20;margin-left:-4px;margin-right:-4px;padding:6px 4px;background:linear-gradient(var(--bg) 70%,transparent)}
+.top h1{min-width:0}.top h1 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+canvas{max-width:100%;height:auto;touch-action:none}
+.piano-lanes{height:min(420px,62dvh)}
+@media(max-width:520px){
+  .wrap{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .panel{padding:12px;min-height:0}
+  .back{padding:8px 12px}
+  .mole-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%;max-width:300px}
+  .hole{width:100%}
+  .opts{grid-template-columns:1fr!important}
+  .sheet>div{padding:24px 18px 20px}
+}
+@media(min-width:900px){
+  .wrap{max-width:980px}
+  .panel{padding:30px}
+}
+@media(min-width:1280px){.wrap{max-width:1040px}}
