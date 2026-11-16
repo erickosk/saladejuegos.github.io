@@ -1,0 +1,12 @@
+{
+  "name": "Sala de Juegos",
+  "short_name": "Sala de Juegos",
+  "description": "Más de 50 juegos gratis en tu navegador, con récords y logros.",
+  "lang": "es",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff1e4",
+  "theme_color": "#fff1e4",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
