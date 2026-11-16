@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Acertijos</title><link rel="icon" href="../favicon.svg" type="image/svg+xml"><meta name="description" content="Juega Acertijos gratis en Sala de Juegos."><meta name="theme-color" content="#fff1e4"><link rel="stylesheet" href="../css/sala.css"><link rel="stylesheet" href="../css/mejoras.css"><link rel="stylesheet" href="../css/movil.css"><script src="../js/sala.js"></script><script src="../js/datos.js"></script><script src="../js/palabras.js"></script></head><body><style>
+.q{font:600 22px/1.4 var(--head);text-align:center;margin:18px auto;max-width:560px}
+.ans{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.ans input{background:var(--bg);border:1px solid rgba(255,255,255,.14);color:var(--text);border-radius:12px;padding:12px 14px;font-size:17px;width:220px}
+.msg{text-align:center;min-height:24px;font-weight:700;margin:10px 0;color:var(--gold)}.msg.bad{color:var(--bad)}.msg.good{color:var(--ok)}
+</style><div class="wrap" style="--accent:#f57c73">
+ <div class="top"><a class="back" href="../index.html">‹ Menú</a><h1>🧩 Acertijos</h1><div class="pill" id="score">0</div></div>
+ <div class="panel" id="host"></div></div>
+<script>
+const NM=['Ana','Beto','Carla','Diego','Elena','Felipe','Gabi','Hugo','Irene','Javier','Karla','Luis','Mara','Nico','Olga','Pablo','Rosa','Sergio','Tania','Ulises'];
+const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const NUM=['un','dos','tres','cuatro','cinco','seis'];
+const SIZE={e:3334,m:3333,h:3333};
+const S=String,mod=(a,n)=>((a%n)+n)%n;
+const nz=s=>S(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,'').trim();
+/* ---- bancos de palabras ---- */
+const CATS=[
+['un animal','perro gato caballo vaca oveja conejo tigre delfín águila pato'],
+['una fruta','manzana pera uva sandía mango fresa durazno limón plátano melón'],
+['un color','rojo azul verde amarillo morado rosa negro blanco gris celeste'],
+['un mueble','silla mesa cama sofá armario escritorio estante banco cajonera taburete'],
+['una prenda de ropa','camisa pantalón zapato calcetín gorra bufanda falda abrigo guante chaleco'],
+['un oficio','médico maestro panadero bombero pintor cocinero piloto carpintero cantante jardinero'],
+['un medio de transporte','coche tren avión barco bicicleta autobús moto camión helicóptero tranvía'],
+['un instrumento musical','guitarra piano violín flauta tambor trompeta arpa saxofón acordeón órgano'],
+['una verdura','zanahoria lechuga cebolla papa rábano brócoli calabaza apio espinaca ajo'],
+['una parte del cuerpo','mano pie hombro nariz oreja rodilla codo dedo boca cabeza']
+].map(([a,w])=>({a,w:w.split(' ')}));
+const W=CATS.flatMap(c=>c.w);
+const REL=[
+'perro ladrar,gato maullar,vaca mugir,oveja balar,caballo relinchar,león rugir,pato graznar,rana croar,cerdo gruñir,abeja zumbar',
+'perro cachorro,gato gatito,vaca ternero,oveja cordero,caballo potro,gallina pollito,cerdo lechón,pato patito,cabra cabrito,rana renacuajo',
+'alto bajo,grande pequeño,día noche,frío caliente,rápido lento,lleno vacío,duro blando,limpio sucio,feliz triste,abierto cerrado',
+'médico hospital,maestro escuela,panadero panadería,jardinero jardín,marinero barco,piloto avión,granjero granja,bibliotecario biblioteca,pescador mar,mecánico taller',
+'lápiz escribir,escoba barrer,llave abrir,aguja coser,pincel pintar,martillo clavar,tijeras cortar,teléfono llamar,cama dormir,silla sentarse'
+].map(s=>s.split(',').map(p=>p.split(' ')));
+const RH='gato pato plato zapato rato retrato contrato barato|balón camión botón jabón melón ratón cajón corazón|cuchillo castillo anillo ladrillo bolsillo cepillo pasillo amarillo|panadero carpintero sombrero dinero cartero jardinero zapatero camarero|cocina harina cortina vitrina mina esquina gallina sardina|gente fuente puente serpiente diente mente caliente corriente|escuela vela tela abuela muela canela suela cazuela|caja paja baja raja ventaja mortaja alhaja navaja|cantar jugar bailar nadar saltar mirar soñar volar|locura cultura ternura altura figura dulzura aventura lectura'.split('|').map(s=>s.split(' '));
+const HB='mariposa elefante biblioteca chocolate computadora telescopio refrigerador calendario escalera ventana pantalla cuaderno bicicleta paraguas cocodrilo hipopótamo murciélago tortuga mosquito saltamontes escritorio diccionario microscopio tormenta relámpago desierto glaciar catarata península archipiélago pradera laguna cometa planeta galaxia asteroide universo estrella trompeta orquesta melodía armonía canción instrumento pintura escultura fotografía biografía geografía historia gramática literatura poesía teatro mercado farmacia panadería aeropuerto hospital universidad restaurante'.split(' ');
+const PAL='radar reconocer somos seres anilina rotor salas oso ala ojo'.split(' ');
+/* ---- utilidades ---- */
+function scr(w,seed){const o=[...nz(w)];let st=(seed+1)*7919+o.length*131+o[0].charCodeAt(0);const r=()=>{st=(Math.imul(st,1664525)+1013904223)>>>0;return st/4294967296};
+ for(let t=0;t<30;t++){const a=o.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}if(a.join('')!==o.join(''))return a.join(' ').toUpperCase()}
+ return o.reverse().join(' ').toUpperCase()}
+const pickNames=(ix)=>{const L=NM.slice();return ix.map(i=>L.splice(i,1)[0])};
+const ST=[37,41,43,47,51,53,57,59];
+function pickW(n,s,st){const out=[];for(let i=0;out.length<n&&i<300;i++){const w=W[(s+i*st)%100];if(!out.some(o=>o.length==w.length))out.push(w)}return out}
+const byAlpha=a=>a.slice().sort((x,y)=>nz(x)<nz(y)?-1:1),byLen=a=>a.slice().sort((x,y)=>x.length-y.length);
+const TRI=[];for(let a=1;a<10;a++)for(let b=a+1;b<10;b++)for(let c=b+1;c<10;c++)TRI.push([a,b,c]);
+const PERM=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+/* culpables: configuraciones con una única solución */
+const CFG=[];for(const need of [1,2])for(let a=0;a<6;a++)for(let b=0;b<6;b++)for(let c=0;c<6;c++){const s=[a,b,c],ok=[];
+ for(let k=0;k<3;k++){const tr=s.reduce((n,x)=>{const ty=x%2,t=(x-ty)/2;return n+((ty?k!=t:k==t)?1:0)},0);if(tr==need)ok.push(k)}
+ if(ok.length==1)CFG.push({s,need,ans:ok[0]})}
+const ACT=['rompió el florero','se comió el pastel','escondió las llaves','pintó la pared','borró el pizarrón','abrió la jaula'];
+const ADJ=[['más alto que','más bajo que','el más alto','el más bajo'],['más rápido que','más lento que','el más rápido','el más lento'],['más pesado que','más ligero que','el más pesado','el más ligero'],['mayor que','menor que','el mayor','el menor']];
+const dPh=q=>q>0?'dentro de '+NUM[q-1]+(q==1?' día':' días'):'hace '+NUM[-q-1]+(q==-1?' día':' días');
+const mPh=q=>q>0?'dentro de '+NUM[q-1]+(q==1?' mes':' meses'):'hace '+NUM[-q-1]+(q==-1?' mes':' meses');
+const QS=[-6,-5,-4,-3,-2,-1,1,2,3,4,5,6];
+const TPL={
+e:[
+ [[10,9,10,10,4],v=>{const A=CATS[v[0]],B=CATS[(v[0]+1+v[1])%10],s=v[2],l=[A.w[s],A.w[(s+3)%10],A.w[(s+7)%10]],x=B.w[v[3]];l.splice(v[4],0,x);return{q:'¿Cuál es la palabra intrusa? '+l.join(', '),a:x}}],
+ [[5,10,9,2],v=>{const P=REL[v[0]],a=P[v[1]],c=P[(v[1]+1+v[2])%10];return{q:v[3]?`Si «${a[0]}» se relaciona con «${a[1]}», ¿con qué palabra se relaciona «${c[0]}»?`:`${a[0]} es a ${a[1]} como ${c[0]} es a…`,a:c[1]}}],
+ [[10,10,10],v=>{const C=CATS[v[0]],w=C.w[v[1]];return{q:`Ordena las letras para formar ${C.a}: ${scr(w,v[2])}`,a:w}}],
+ [[10,10,84,10,10,10,4],v=>{const C=CATS[v[0]],w=C.w[v[1]],t=TRI[v[2]],l=[v[3],v[4],v[5]].map((x,i)=>CATS[(v[0]+t[i])%10].w[x]);l.splice(v[6],0,w);return{q:`¿Cuál de estas palabras es ${C.a}? ${l.join(', ')}`,a:w}}],
+ [[100,8,4],v=>{const l=pickW(4,v[0],ST[v[1]]),k=v[2],a=byAlpha(l),b=byLen(l);return{q:`¿Cuál de estas palabras ${['tiene más letras','tiene menos letras','iría primero en un diccionario','iría al final en un diccionario'][k]}? ${l.join(', ')}`,a:[b[3],b[0],a[0],a[3]][k]}}]
+],
+m:[
+ [[20,19,18,4,2],v=>{const[A,B,C]=pickNames(v),k=v[3],f=v[4],r=['llegó antes que','es más alto que','corre más rápido que','es mayor que'][k],Q=[['¿Quién llegó en último lugar?','¿Quién llegó primero?'],['¿Quién es el más bajo?','¿Quién es el más alto?'],['¿Quién es el más lento?','¿Quién es el más rápido?'],['¿Quién es el menor?','¿Quién es el mayor?']][k];return{q:`${A} ${r} ${B}, y ${B} ${r.replace(' que','')} que ${C}. ${Q[f]}`,a:f?A:C}}],
+ [[100,12],v=>{const w=W[v[0]];return{q:`Ordena las letras: ${scr(w,v[1])} (empieza con «${nz(w)[0].toUpperCase()}»)`,a:w}}],
+ [[10,9,8,8,4],v=>{const G=RH[v[0]],s=v[3],l=[G[s],G[(s+3)%8],G[(s+5)%8]],x=RH[(v[0]+1+v[1])%10][v[2]];l.splice(v[4],0,x);return{q:'¿Cuál NO rima con las demás? '+l.join(', '),a:x}}],
+ [[100,8,6],v=>{const l=pickW(5,v[0],ST[v[1]]),k=v[2],a=byAlpha(l),b=byLen(l);return{q:`Mira estas palabras: ${l.join(', ')}. ¿Cuál es ${['la que queda en el centro al ordenarlas alfabéticamente','la segunda en orden alfabético','la penúltima en orden alfabético','la segunda más corta','la de en medio al ordenarlas de la más corta a la más larga','la segunda más larga'][k]}?`,a:[a[2],a[1],a[3],b[1],b[2],b[3]][k]}}],
+ [[7,4,12,20],v=>{const R=[['anteayer',-2],['ayer',-1],['mañana',1],['pasado mañana',2]][v[1]];let q=QS[v[2]];if(q==R[1])q=-q;const hoy=v[0]-R[1];return{q:`${NM[v[3]]} piensa: «Si ${R[0]} ${R[1]<0?'fue':'es'} ${DIAS[v[0]]}, ¿qué día ${q>0?'será':'fue'} ${dPh(q)}?»`,a:DIAS[mod(hoy+q,7)]}}]
+],
+h:[
+ [[62,14],v=>{const w=HB[v[0]];return{q:`Ordena las letras y descubre la palabra (sin pistas): ${scr(w,v[1])}`,a:w}}],
+ [[10,100,49,4],v=>{const x=PAL[v[0]],l=[W[v[1]],W[(v[1]+1+v[2])%100],W[(v[1]+50+v[2])%100]];l.splice(v[3],0,x);return{q:'¿Cuál de estas palabras se lee igual al derecho que al revés? '+l.join(', '),a:x}}],
+ [[20,19,18,17,8,6,2,3],v=>{const n=pickNames(v.slice(0,4)),A=ADJ[v[7]],P=PERM[v[5]],cl=k=>(v[4]>>k)&1?`${n[k+1]} es ${A[1]} ${n[k]}`:`${n[k]} es ${A[0]} ${n[k+1]}`;return{q:`${P.map(cl).join('. ')}. ¿Quién es ${v[6]?A[3]:A[2]}?`,a:v[6]?n[3]:n[0]}}],
+ [[20,19,18,CFG.length,6],v=>{const n=pickNames(v.slice(0,3)),c=CFG[v[3]],d=c.s.map((x,i)=>{const ty=x%2,t=(x-ty)/2,me=t==i;return`${n[i]} dice: «${ty?(me?'Yo no fui':'No fue '+n[t]):(me?'Fui yo':'Fue '+n[t])}»`});return{q:`${n[0]}, ${n[1]} y ${n[2]} están juntos y uno de ellos ${ACT[v[4]]}. ${d.join('. ')}. ${c.need==1?'Solo uno de los tres dice la verdad':'Solo uno de los tres miente'}. ¿Quién fue?`,a:n[c.ans]}}],
+ [[12,12,12,20],v=>{const r=QS[v[1]];let q=QS[v[2]];if(q==r)q=-q;const hoy=v[0]-r;return{q:`${NM[v[3]]} piensa: «Si ${mPh(r)} ${r<0?'fue':'será'} ${MES[v[0]]}, ¿qué mes ${q>0?'será':'fue'} ${mPh(q)}?»`,a:MES[mod(hoy+q,12)]}}]
+]};
+const PR=[32452843,15485863,104729,7919,1009],gcd=(a,b)=>b?gcd(b,a%b):a;
+function riddle(L,j){
+ const T=TPL[L],t=j%T.length,p=Math.floor(j/T.length),[rad,f]=T[t],sp=rad.reduce((a,b)=>a*b,1),k=PR.find(x=>gcd(x,sp)==1)||1;
+ let x=(p*k)%sp;const v=rad.map(r=>{const y=x%r;x=Math.floor(x/r);return y});return f(v);
+}
+/*FIN-DATOS*/
+const host=$('#host'),pill=$('#score');let lv=store.get('ac_lv','e');
+const LB={e:['Fácil',10],m:['Medio',20],h:['Difícil',30]};
+const solved=()=>store.get('ac2_done',{});
+function menu(){pill.textContent=Object.keys(solved()).length;
+ host.innerHTML='<h3>Dificultad</h3><div id="sg"></div><p class="muted" id="dd"></p><h3>Acertijo</h3><div class="seed"><span class="muted">Acertijo n.º</span> <input id="nn" type="number" min="1" style="background:var(--bg);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:10px;padding:10px 12px;width:110px"> <button class="chip" id="rd">🎲 Al azar</button></div><p class="muted">10,000 acertijos de palabras y lógica: 3,334 fáciles, 3,333 medios y 3,333 difíciles. Cada número siempre da el mismo acertijo.</p><button class="btn" id="go">Jugar</button>';
+ const info=()=>{const n=SIZE[lv];$('#dd').textContent=fmt(n)+' acertijos en este nivel · resueltos: '+Object.keys(solved()).filter(k=>k[0]==lv).length;$('#nn').max=n;$('#nn').value=rnd(1,n)};
+ seg($('#sg'),Object.entries(LB).map(([k,v])=>[k,v[0]]),lv,k=>{lv=k;store.set('ac_lv',k);info()});info();
+ $('#rd').onclick=()=>$('#nn').value=rnd(1,SIZE[lv]);
+ $('#go').onclick=()=>{const n=Math.min(SIZE[lv],Math.max(1,+$('#nn').value||1));Sala.cancel();Sala.countdown(()=>play(n))};}
+function play(n){const R=riddle(lv,n-1),key=lv+n;let hints=0,over=false;
+ host.innerHTML='<div class="hud"><span>'+LB[lv][0]+' · acertijo n.º '+n+' de '+fmt(SIZE[lv])+'</span><span id="h">Pistas: 0</span></div><div class="q">'+R.q+'</div><div class="ans"><input id="in" autocomplete="off" placeholder="Tu respuesta"><button class="btn" id="ok">Comprobar</button></div><div class="msg" id="ms"></div><div style="text-align:center"><button class="btn ghost" id="hn">💡 Pista</button><button class="btn ghost" id="gv">Rendirme</button><button class="btn ghost" id="nx">Siguiente ›</button><button class="btn ghost" id="mn">Menú</button></div>';
+ const inp=$('#in');inp.focus();
+ const ms=(t,c)=>{$('#ms').textContent=t;$('#ms').className='msg '+(c||'')};
+ const check=()=>{if(over)return;if(nz(inp.value)===nz(R.a)){over=true;const p=Math.max(5,LB[lv][1]-hints*4),d=solved();if(!d[key]){d[key]=1;store.set('ac2_done',d);}ms('¡Completado! +'+p+' puntos · '+R.a,'good');tone(800,.25);pill.textContent=Object.keys(solved()).length}else{ms('Todavía no. ¡Inténtalo otra vez!','bad');tone(180,.12,'square')}};
+ $('#ok').onclick=check;inp.onkeydown=e=>{if(e.key==='Enter')check()};
+ $('#hn').onclick=()=>{if(over)return;hints++;$('#h').textContent='Pistas: '+hints;const a=S(R.a);ms(hints==1?'La respuesta tiene '+a.length+' letras':'Empieza con «'+a.slice(0,hints-1)+'»')};
+ $('#gv').onclick=()=>{over=true;ms('La respuesta era: '+R.a,'bad')};
+ $('#nx').onclick=()=>play(n%SIZE[lv]+1);$('#mn').onclick=menu;pill.textContent=Object.keys(solved()).length}
+menu();
+</script></body></html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Basta</title><link rel="icon" href="../favicon.svg" type="image/svg+xml"><meta name="description" content="Juega Basta gratis en Sala de Juegos."><meta name="theme-color" content="#fff1e4">
+<link rel="stylesheet" href="../css/sala.css"><link rel="stylesheet" href="../css/mejoras.css"><link rel="stylesheet" href="../css/movil.css"><script src="../js/sala.js"></script><script src="../js/datos.js"></script><script src="../js/basta-palabras.js"></script></head>
+<body><style>
+.ba{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.ba-menu{max-width:480px;margin:0 auto;width:100%}.ba-menu h3{margin:18px 0 10px}
+.ba-cab{display:flex;align-items:center;gap:14px}
+.ba-letra{flex:none;width:76px;height:76px;border-radius:24px;display:grid;place-items:center;background:var(--accent);color:#fff;font:600 52px/1 var(--head);box-shadow:0 5px 0 rgba(0,0,0,.2);text-transform:uppercase;animation:pop .35s var(--ease)}
+.ba-info{flex:1;min-width:0}
+.ba-info b{display:block;font:600 19px var(--head)}.ba-info span{color:var(--muted);font-size:14px}
+.ba-tiempo{height:12px;border-radius:99px;background:var(--deep);overflow:hidden;margin-top:8px}
+.ba-tiempo i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#4caf6e,#f2b84b);border-radius:99px;transition:width .1s linear}
+.ba-tiempo.urge i{background:#e8472f}
+.ba-form{display:grid;gap:10px;grid-template-columns:1fr}
+@media(min-width:620px){.ba-form{grid-template-columns:1fr 1fr}}
+.ba-campo{display:grid;gap:5px}.ba-campo label{font:700 13px var(--body);color:var(--muted);display:flex;align-items:center;gap:6px}
+.ba-campo input{width:100%;padding:13px 14px;border-radius:14px;border:2px solid rgba(80,60,50,.16);background:#fffdfb;color:var(--text);font:600 17px var(--body)}
+.ba-campo input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,124,115,.25)}
+.ba-campo input.mal{border-color:#d9473a;background:#fff3f1}.ba-campo input.bien{border-color:#4caf6e}
+.ba-campo input:disabled{opacity:.8}
+.ba-basta{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px;border:0;border-radius:18px;background:#e8472f;color:#fff;font:600 24px var(--head);letter-spacing:.06em;cursor:pointer;box-shadow:0 5px 0 #a8301f;transition:transform .15s}
+.ba-basta:active{transform:translateY(4px);box-shadow:0 1px 0 #a8301f}.ba-basta svg{width:30px;height:30px}
+.ba-aviso{text-align:center;padding:12px;border-radius:14px;background:#fff0d6;color:#8a5a00;font-weight:700;animation:pop .3s var(--ease)}
+.ba-tabla{display:grid;gap:8px}
+.ba-fila{display:grid;grid-template-columns:1fr;gap:4px;padding:11px 14px;border-radius:16px;background:var(--panel2);border:1px solid rgba(80,60,50,.1)}
+.ba-fila h4{margin:0 0 2px;font:700 12.5px var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.ba-par{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ba-cel{display:flex;align-items:center;gap:8px;min-width:0;font-weight:700}
+.ba-cel .t{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+.ba-cel small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+.ba-cel svg{flex:none;width:22px;height:22px}
+.ba-pts{margin-left:auto;flex:none;font:700 15px var(--body);padding:2px 9px;border-radius:99px;background:rgba(255,255,255,.7)}
+.ok .ba-pts{color:#2e9e63}.mal2 .ba-pts{color:#d9473a}.sv .ba-pts{color:#a8750a}
+.ba-tot{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center}
+.ba-tot div{padding:14px;border-radius:18px;background:var(--deep)}.ba-tot b{display:block;font:600 34px var(--head)}.ba-tot small{color:var(--muted);font-weight:700}
+.ba-barra{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.ba-barra .btn{margin:0;padding:11px 20px}
+.ba-fin{text-align:center;padding:10px 0}.ba-fin h2{margin:0;font:600 36px var(--head)}.ba-fin.gana h2{color:#2e9e63}.ba-fin.pierde h2{color:#d9473a}.ba-fin.empate h2{color:#c98a2a}
+.msg{text-align:center;min-height:24px;font-weight:700;color:#c9705a;margin:0}
+.ba-leg{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;color:var(--muted);font-size:12.5px;font-weight:700}.ba-leg span{display:flex;align-items:center;gap:5px}.ba-leg svg{width:16px;height:16px}
+@media(max-width:560px){.ba-par{grid-template-columns:1fr}.ba-par .ba-cel+.ba-cel{padding-top:7px;border-top:1px dashed rgba(80,60,50,.15)}}
+</style>
+<div class="wrap" style="--accent:#f57c73">
+ <div class="top"><a class="back" href="../index.html">‹ Menú</a><h1><img class="gi" src="../img/basta.svg" alt=""><span>Basta</span></h1><div class="pill" id="score">0</div></div>
+ <div class="panel" id="host"></div>
+ <p class="msg" id="ms" role="status"></p>
+</div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s),pill=$('#score'),host=$('#host');
+let _ac=null;const tono=(f,d=.08,t='triangle',v=.07,f2)=>{try{const C=window.AudioContext||window.webkitAudioContext;_ac=_ac||new C();if(_ac.state==='suspended')_ac.resume();const o=_ac.createOscillator(),g=_ac.createGain();o.type=t;o.frequency.setValueAtTime(f,_ac.currentTime);if(f2)o.frequency.exponentialRampToValueAtTime(f2,_ac.currentTime+d);g.gain.value=v;o.connect(g);g.connect(_ac.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,_ac.currentTime+d);o.stop(_ac.currentTime+d)}catch(e){}};
+/* ---------- Íconos (SVG) ---------- */
+const I={
+ ok:'<svg viewBox="0 0 24 24" fill="none" stroke="#2e9e63" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#d8f2e2" stroke="none"/><path d="M7 12.500l3.500 3.500L17 9"/></svg>',
+ sv:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffe9b8"/><path d="M9.500 9.500a2.500 2.500 0 1 1 3.500 2.300c-.7.400-1 .9-1 1.700" fill="none" stroke="#a8750a" stroke-width="2.400" stroke-linecap="round"/><circle cx="12" cy="17" r="1.400" fill="#a8750a"/></svg>',
+ mal:'<svg viewBox="0 0 24 24" fill="none" stroke="#d9473a" stroke-width="3" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#fde0dc" stroke="none"/><path d="M8.500 8.500l7 7M15.500 8.500l-7 7"/></svg>',
+ vacio:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ece3da"/><path d="M8 12h8" stroke="#9a8c80" stroke-width="2.600" stroke-linecap="round"/></svg>',
+ stop:'<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 2h10l9 9v10l-9 9H11l-9-9V11z" fill="#fff"/><path d="M12 5h8l7 7v8l-7 7h-8l-7-7v-8z" fill="#e8472f"/><path d="M10 16h12" stroke="#fff" stroke-width="3.200" stroke-linecap="round"/></svg>',
+ reloj:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 8.500V13l3 2M9.500 3h5"/></svg>'
+};
+/* ---------- Configuración ---------- */
+const ETQ={nombre:'Nombre',animal:'Animal',fruta:'Fruta o verdura',color:'Color',pais:'País',cosa:'Cosa',ciudad:'Ciudad',profesion:'Profesión'};
+const NIV={
+ 1:{n:'Fácil',cats:['nombre','animal','fruta','color','pais'],t:90,cpu:.5,sinver:50,llama:1.5},
+ 2:{n:'Medio',cats:['nombre','animal','fruta','color','pais','cosa'],t:70,cpu:.72,sinver:25,llama:.78},
+ 3:{n:'Difícil',cats:['nombre','animal','fruta','color','pais','cosa','ciudad','profesion'],t:55,cpu:.92,sinver:0,llama:.6}
+};
+const RONDAS=5;
+const nrm=w=>(w||'').toLowerCase().replace(/ñ/g,'\u0001').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\u0001/g,'ñ').replace(/[^a-zñ0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const SET={},POR={};
+Object.keys(BASTA_BANCO).forEach(c=>{const L=BASTA_BANCO[c].split(',').map(x=>x.trim()).filter(Boolean);SET[c]=new Set(L.map(nrm));POR[c]={};L.forEach(w=>{const l=nrm(w)[0];(POR[c][l]=POR[c][l]||[]).push(w)})});
+const LETRAS='abcdefghjlmnoprstvz'.split('');
+let nivel=+(localStorage.getItem('ba_niv')||1),S=null,timer=0;
+
+function menu(){
+  clearInterval(timer);$('#ms').textContent='';pill.textContent='0';
+  host.innerHTML=`<div class="ba-menu"><h3>Dificultad</h3>
+   <div class="seg" id="sN">${[1,2,3].map(k=>`<button data-v="${k}" class="${k===nivel?'on':''}">${NIV[k].n}</button>`).join('')}</div>
+   <p class="muted" id="det"></p>
+   <p class="muted">Te tocará una letra en cada ronda: escribe una palabra que empiece con ella en cada categoría antes de que se acabe el tiempo, o grita ¡BASTA! cuando termines. Vale 100 puntos si la palabra es correcta y la computadora no puso la misma (50 si coinciden). Hay 5 rondas.</p>
+   <div class="ba-barra" style="margin-top:8px"><button class="btn" id="go">¡A jugar!</button></div></div>`;
+  const det=()=>{const c=NIV[nivel];$('#det').textContent=`${c.cats.length} categorías · ${c.t} segundos por ronda · la computadora sabe ${Math.round(c.cpu*100)}% de las respuestas${c.sinver?'':' · las palabras que no conozco no puntúan'}`};det();
+  $('#sN').onclick=e=>{const b=e.target.closest('button');if(!b)return;nivel=+b.dataset.v;localStorage.setItem('ba_niv',nivel);document.querySelectorAll('#sN button').forEach(x=>x.classList.toggle('on',x===b));det()};
+  $('#go').onclick=empezar;
+}
+function empezar(){Sala.cancel();Sala.countdown(_empezar)}
+function _empezar(){
+  S={cfg:NIV[nivel],ronda:0,tot:0,totC:0,usadas:[],historial:[],estado:'idle'};pill.textContent='0';$('#ms').textContent='';siguiente();
+}
+function elegirLetra(){
+  const cats=S.cfg.cats;
+  const ok=LETRAS.filter(l=>!S.usadas.includes(l)&&cats.filter(c=>(POR[c][l]||[]).length).length>=cats.length-1);
+  const l=ok[Math.floor(Math.random()*ok.length)];S.usadas.push(l);return l;
+}
+function siguiente(){
+  S.ronda++;S.letra=elegirLetra();S.estado='juega';S.fin=false;S.llamada=false;S.t0=Date.now();
+  const c=S.cfg;S.limite=c.t*1000;S.tLlama=c.llama<=1?c.t*1000*(c.llama+(Math.random()*.14-.07)):1e12;
+  host.innerHTML=`<div class="ba"><div class="ba-cab"><div class="ba-letra" aria-label="Letra ${S.letra.toUpperCase()}">${S.letra.toUpperCase()}</div>
+   <div class="ba-info"><b>Ronda ${S.ronda} de ${RONDAS}</b><span id="tx">${c.t} s</span><div class="ba-tiempo" id="bt"><i id="bi"></i></div></div></div>
+   <div id="avi"></div>
+   <form class="ba-form" id="frm" autocomplete="off" novalidate>${c.cats.map((k,i)=>`<div class="ba-campo"><label for="c${i}">${ETQ[k]}</label><input id="c${i}" data-k="${k}" type="text" enterkeyhint="${i<c.cats.length-1?'next':'done'}" autocapitalize="words" spellcheck="false" placeholder="Con ${S.letra.toUpperCase()}…"></div>`).join('')}</form>
+   <button class="ba-basta" id="bBasta">${I.stop}¡BASTA!</button></div>`;
+  const ins=[...document.querySelectorAll('.ba-campo input')];
+  ins.forEach((inp,i)=>{
+    inp.addEventListener('input',()=>{const v=nrm(inp.value);inp.classList.toggle('mal',!!v&&v[0]!==S.letra);inp.classList.toggle('bien',!!v&&v[0]===S.letra)});
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();(ins[i+1]||inp).focus()}});
+  });
+  $('#frm').addEventListener('submit',e=>e.preventDefault());
+  $('#bBasta').onclick=()=>{if(S.estado==='juega'){tono(300,.3,'sawtooth',.08,120);cerrarRonda('tú')}};
+  ins[0].focus({preventScroll:true});
+  clearInterval(timer);timer=setInterval(tick,100);tono(520,.12);
+}
+let ultSeg=-1;
+function tick(){
+  if(S.estado!=='juega'&&S.estado!=='ultimos')return;
+  const ms=Date.now()-S.t0,rest=Math.max(0,S.limite-ms);
+  $('#bi').style.width=(rest/S.limite*100)+'%';$('#tx').textContent=Math.ceil(rest/1000)+' s';$('#bt').classList.toggle('urge',rest<10000);
+  const seg=Math.ceil(rest/1000);if(seg!==ultSeg){ultSeg=seg;if(seg<=5&&seg>0)tono(880,.05,'square',.04)}
+  if(S.estado==='juega'&&!S.llamada&&ms>=S.tLlama){S.llamada=true;S.estado='ultimos';S.gracia=Date.now()+4000;tono(300,.4,'sawtooth',.08,120);$('#avi').innerHTML=`<div class="ba-aviso">¡La computadora gritó BASTA! Termina rápido…</div>`}
+  if(S.estado==='ultimos'&&Date.now()>=S.gracia)cerrarRonda('la computadora');
+  if(rest<=0&&S.estado!=='cerrada')cerrarRonda('tiempo');
+}
+function puntuar(cat,hum,cpu){
+  const h=nrm(hum),c=nrm(cpu);let r={txt:hum.trim(),est:'vacio',pts:0};
+  if(h){
+    if(h[0]!==S.letra)r.est='mal';
+    else if(SET[cat].has(h)){r.est='ok';r.pts=(c&&c===h)?50:100;r.igual=!!(c&&c===h)}
+    else if(h.length>=3&&/[aeiouy]/.test(h)){r.est='sv';r.pts=S.cfg.sinver}
+    else r.est='mal';
+  }
+  const rc={txt:cpu||'',pts:cpu?((h&&h===c)?50:100):0};
+  return{h:r,c:rc};
+}
+function cerrarRonda(quien){
+  if(S.estado==='cerrada')return;S.estado='cerrada';clearInterval(timer);
+  const filas=[];let ph=0,pc=0;
+  document.querySelectorAll('.ba-campo input').forEach(inp=>{
+    const cat=inp.dataset.k,lista=POR[cat][S.letra]||[];
+    const cpu=lista.length&&Math.random()<S.cfg.cpu?lista[Math.floor(Math.random()*lista.length)]:'';
+    const r=puntuar(cat,inp.value,cpu);ph+=r.h.pts;pc+=r.c.pts;filas.push({cat,...r});
+  });
+  S.tot+=ph;S.totC+=pc;pill.textContent=S.tot;S.historial.push({letra:S.letra,ph,pc});
+  mostrarResultado(filas,ph,pc,quien);
+}
+function mostrarResultado(filas,ph,pc,quien){
+  const ultima=S.ronda>=RONDAS;
+  const msg={'tú':'Gritaste ¡BASTA!','la computadora':'La computadora gritó ¡BASTA!',tiempo:'Se acabó el tiempo'}[quien];
+  host.innerHTML=`<div class="ba"><div class="ba-cab"><div class="ba-letra">${S.letra.toUpperCase()}</div><div class="ba-info"><b>Ronda ${S.ronda} de ${RONDAS}</b><span>${msg}</span></div></div>
+   <div class="ba-tabla">${filas.map(f=>{const cl=f.h.est==='ok'?'ok':f.h.est==='sv'?'sv':f.h.est==='mal'?'mal2':'';
+     const nota={ok:f.h.igual?'Igual que la computadora':'Palabra correcta',sv:'No la conozco',mal:'No empieza con '+S.letra.toUpperCase()+' o no es válida',vacio:'Sin respuesta'}[f.h.est];
+     return `<div class="ba-fila ${cl}"><h4>${ETQ[f.cat]}</h4><div class="ba-par"><div class="ba-cel">${I[f.h.est]}<span class="t">${f.h.txt?escapar(f.h.txt):'—'}<small>${nota}</small></span><span class="ba-pts">+${f.h.pts}</span></div>
+      <div class="ba-cel">${f.c.txt?I.ok.replace('#2e9e63','#7a6a60').replace('#d8f2e2','#ece3da'):I.vacio}<span class="t">${f.c.txt?escapar(f.c.txt):'—'}<small>Computadora</small></span><span class="ba-pts" style="color:var(--muted)">+${f.c.pts}</span></div></div></div>`}).join('')}</div>
+   <div class="ba-leg"><span>${I.ok}Correcta</span><span>${I.sv}Sin verificar</span><span>${I.mal}Inválida</span></div>
+   <div class="ba-tot"><div><b>${S.tot}</b><small>Tú (+${ph})</small></div><div><b>${S.totC}</b><small>Computadora (+${pc})</small></div></div>
+   <div class="ba-barra"><button class="btn" id="sig" style="background:var(--accent)">${ultima?'Ver resultado final':'Siguiente ronda'}</button></div></div>`;
+  $('#sig').onclick=ultima?final:siguiente;tono(660,.12);
+}
+const escapar=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function final(){
+  const gana=S.tot>S.totC,empate=S.tot===S.totC,k='ba_best'+nivel;let mejor=0;
+  try{mejor=+localStorage.getItem(k)||0;if(S.tot>mejor){mejor=S.tot;localStorage.setItem(k,mejor)}}catch(e){}
+  if(gana){$('#ms').textContent='¡Completado: le ganaste a la computadora!';Sala.confetti();tono(784,.2);setTimeout(()=>tono(988,.3),180)}else tono(gana?600:200,.4);
+  const cl=gana?'gana':empate?'empate':'pierde';
+  host.innerHTML=`<div class="ba"><div class="ba-fin ${cl}"><h2>${gana?'¡Ganaste!':empate?'¡Empate!':'Ganó la computadora'}</h2><p class="muted">${S.cfg.n} · ${RONDAS} rondas · letras: ${S.historial.map(h=>h.letra.toUpperCase()).join(' ')}</p></div>
+   <div class="ba-tot"><div><b>${S.tot}</b><small>Tú</small></div><div><b>${S.totC}</b><small>Computadora</small></div></div>
+   <p class="muted" style="text-align:center;margin:0">Tu mejor puntaje en ${S.cfg.n}: <b>${mejor}</b></p>
+   <div class="ba-barra"><button class="btn" id="otra" style="background:var(--accent)">Jugar otra vez</button><button class="btn ghost" id="mn">Cambiar dificultad</button></div></div>`;
+  $('#otra').onclick=empezar;$('#mn').onclick=menu;
+}
+window.__ba={get S(){return S},NIV,SET,POR,nrm,empezar,cerrar:()=>cerrarRonda('tú'),get nivel(){return nivel}};
+menu();
+})();
+</script></body></html>

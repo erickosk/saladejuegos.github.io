@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Memorama</title><link rel="icon" href="../favicon.svg" type="image/svg+xml"><meta name="description" content="Juega Memorama gratis en Sala de Juegos."><meta name="theme-color" content="#fff1e4"><link rel="stylesheet" href="../css/sala.css"><link rel="stylesheet" href="../css/mejoras.css"><link rel="stylesheet" href="../css/movil.css"><script src="../js/sala.js"></script><script src="../js/datos.js"></script></head><body><style>
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--panel2);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:9px 14px;border-radius:999px;cursor:pointer;font-size:14px}
+.chip.on{background:var(--accent);color:#3a270e;font-weight:700}
+.seed{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seed input{background:var(--bg);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:10px;padding:10px 12px;width:130px;font-size:15px}
+.grid{display:grid;gap:10px;margin:14px auto;width:100%}
+.card{aspect-ratio:1;perspective:600px;cursor:pointer;border:0;background:none;padding:0}
+.in{position:relative;width:100%;height:100%;transition:transform .35s;transform-style:preserve-3d}
+.card.f .in,.card.m .in{transform:rotateY(180deg)}
+.fr,.bk{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden;font-size:clamp(22px,6vw,38px);border:1px solid rgba(255,255,255,.1)}
+.fr{background:linear-gradient(135deg,var(--panel2),#3f4e5a);color:var(--muted)}
+.bk{background:#171d23;transform:rotateY(180deg)}
+.card.m .bk{background:rgba(76,175,110,.25);border-color:var(--ok)}
+.shake{animation:sh .4s}@keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.msg{min-height:22px;text-align:center;color:var(--gold);font-size:14px}
+</style>
+<div class="wrap" style="--accent:#f57c73">
+ <div class="top"><a class="back" href="../index.html">‹ Menú</a><h1>🃏 Memorama</h1><div class="pill" id="score">0</div></div>
+ <div class="panel" id="host"></div>
+</div>
+<script>const $=s=>document.querySelector(s);
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
+const fmt=n=>n.toLocaleString('es-MX');
+let _a=null;
+function tone(f,d=.15,t='sine',v=.15){try{_a=_a||new(window.AudioContext||window.webkitAudioContext)();const o=_a.createOscillator(),g=_a.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(_a.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,_a.currentTime+d);o.stop(_a.currentTime+d)}catch(e){}}
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+function mulberry(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function seg(el,items,val,cb){el.className='seg';el.innerHTML=items.map(([k,l])=>`<button data-k="${k}" class="${k===val?'on':''}">${l}</button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>{el.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));cb(b.dataset.k)})}
+
+
+/* ===== Temas ===== */
+const T={
+ frutas:['🍎 Frutas','🍎 🍌 🍇 🍒 🍉 🍋 🥝 🍑 🍓 🍍 🥭 🍐 🍊 🥥 🫐 🍈'],
+ animales:['🐶 Animales','🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🦉 🦄 🐢'],
+ comida:['🍕 Comida','🍕 🍔 🌮 🍣 🍩 🍪 🍦 🥐 🍿 🧁 🥑 🌽 🥕 🍞 🧀 🍫'],
+ cielo:['🚀 Cielo y clima','🌙 ⭐ 🌞 🌈 🚀 🪐 🌍 ☄️ ⚡ ❄️ 🔥 🌊 🌪️ ☁️ 🌸 🍀'],
+ juegos:['⚽ Deportes y cosas','⚽ 🏀 🎾 🏈 🎱 🏓 🥊 🎯 🎸 🎹 🎲 🎮 🚗 ✈️ 🚲 ⌚']
+};
+Object.values(T).forEach(t=>t[1]=t[1].split(' '));
+T.todo=['🎲 Todo mezclado',Object.values(T).flatMap(t=>t[1])];
+const TK=Object.keys(T);
+
+/* ===== Niveles de dificultad ===== */
+const DF={
+ e:{label:'Fácil',pairs:6,cols:4,peek:1300,time:0,moves:0,hints:2,shuf:0,desc:'6 parejas · sin tiempo · sin límite de intentos · 2 pistas'},
+ m:{label:'Medio',pairs:10,cols:5,peek:850,time:120,moves:0,hints:1,shuf:0,desc:'10 parejas · 120 s · 1 pista'},
+ h:{label:'Difícil',pairs:15,cols:6,peek:550,time:150,moves:45,hints:0,shuf:10,desc:'15 parejas · 150 s · máximo 45 intentos · cada 10 intentos las cartas pendientes se reordenan'}
+};
+const MAXSEED=99999;
+
+/* ===== Combinaciones posibles: C(N,k) · (2k)! / 2^k ===== */
+function combos(N,k){let c=1n;for(let i=0n;i<BigInt(k);i++)c=c*(BigInt(N)-i)/(i+1n);let f=1n;for(let i=2n;i<=BigInt(2*k);i++)f*=i;return c*f/(2n**BigInt(k))}
+function bigFmt(b){const s=b.toString();return s.length<=9?fmt(Number(b)):`${s[0]},${s.slice(1,3)} × 10^${s.length-1}`}
+
+const host=$('#host'),pill=$('#score');
+let theme=store.get('mm_theme','frutas'),diff=store.get('mm_diff','m'),timers=[];
+const clr=()=>{timers.forEach(t=>{clearTimeout(t);clearInterval(t)});timers=[]};
+
+function menu(){
+ clr();pill.textContent='0';
+ host.innerHTML=`<h3>Dificultad</h3><div id="seg"></div><p class="muted" id="dd"></p><h3>Tema</h3><div class="chips" id="th"></div><h3>Tablero</h3><div class="seed"><span class="muted">Tablero n.º</span><input id="sd" type="number" min="1" max="${MAXSEED}" value="${rnd(1,MAXSEED)}" aria-label="Número de tablero"><button class="chip" id="rd">🎲 Otro al azar</button></div><p class="muted" id="cb"></p><button class="btn" id="go">Jugar</button>`;
+ seg($('#seg'),Object.entries(DF).map(([k,v])=>[k,v.label]),diff,k=>{diff=k;store.set('mm_diff',k);info()});
+ $('#th').innerHTML=TK.map(k=>`<button class="chip ${k===theme?'on':''}" data-k="${k}">${T[k][0]}</button>`).join('');
+ $('#th').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{theme=b.dataset.k;store.set('mm_theme',theme);$('#th').querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===b));info()});
+ $('#rd').onclick=()=>$('#sd').value=rnd(1,MAXSEED);
+ $('#go').onclick=()=>start(Math.min(MAXSEED,Math.max(1,+$('#sd').value||1)));
+ info();
+ function info(){
+  const D=DF[diff],N=T[theme][1].length;
+  $('#dd').textContent=D.desc;
+  $('#cb').textContent=`Con este tema y nivel hay ${bigFmt(combos(N,D.pairs))} formas distintas de repartir las cartas. Además hay ${fmt(MAXSEED)} tableros numerados: el mismo número siempre da el mismo tablero.`;
+ }
+}
+
+function start(seed){clr();Sala.countdown(()=>_start(seed))}
+function _start(seed){
+ clr();const d=diff,D=DF[d],pool=T[theme][1];
+ const rng=mulberry(seed*7919+TK.indexOf(theme)*104729+['e','m','h'].indexOf(d)*31+1);
+ const sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+ const icons=sh(pool).slice(0,D.pairs),deck=sh(icons.concat(icons));
+ let first=null,lock=false,moves=0,found=0,t0=0,left=D.time,hints=D.hints,over=false;
+ host.innerHTML=`<div class="hud"><span id="h1"></span><span id="h2"></span><span id="h3"></span></div><div class="grid" id="g" style="grid-template-columns:repeat(${D.cols},1fr);max-width:${D.cols*100}px"></div><div class="msg" id="ms"></div><div style="text-align:center"><button class="btn ghost" id="hint">💡 Pista</button><button class="btn ghost" id="rs">↺ Reiniciar</button><button class="btn ghost" id="nw">🎲 Otro tablero</button><button class="btn ghost" id="mn">Menú</button></div>`;
+ const grid=$('#g');
+ const cards=deck.map((ic,i)=>{
+  const el=document.createElement('button');el.className='card';el.setAttribute('aria-label','Carta '+(i+1));el.style.order=i;
+  el.innerHTML=`<div class="in"><div class="fr">?</div><div class="bk">${ic}</div></div>`;
+  const c={el,ic,pos:i,matched:false};el.onclick=()=>flip(c);grid.appendChild(el);return c;
+ });
+ const hud=()=>{$('#h1').textContent=`Parejas: ${found}/${D.pairs}`;$('#h2').textContent=`Intentos: ${moves}${D.moves?'/'+D.moves:''}`;$('#h3').textContent=D.time?`⏱ ${Math.max(0,left)} s`:'⏱ sin límite';$('#hint').textContent=`💡 Pista (${hints})`;$('#hint').style.display=D.hints?'':'none';pill.textContent=moves};
+ hud();
+ function flip(c){
+  if(over||lock||c.matched||c===first)return;
+  if(!t0){t0=1;if(D.time)timers.push(setInterval(()=>{left--;hud();if(left<=0)finish(false,'Se acabó el tiempo')},1000))}
+  c.el.classList.add('f');
+  if(!first){first=c;return}
+  const a=first,b=c;first=null;moves++;lock=true;
+  if(a.ic===b.ic){a.matched=b.matched=true;a.el.classList.add('m');b.el.classList.add('m');found++;tone(600,.12);lock=false;hud();if(found===D.pairs)finish(true)}
+  else{
+   tone(200,.15,'square');hud();
+   timers.push(setTimeout(()=>{a.el.classList.remove('f');b.el.classList.remove('f');lock=false;
+    if(D.moves&&moves>=D.moves)return finish(false,'Te quedaste sin intentos');
+    if(D.shuf&&moves%D.shuf===0)reshuffle()},D.peek));
+  }
+ }
+ function reshuffle(){
+  const u=cards.filter(c=>!c.matched),ps=sh(u.map(c=>c.pos));
+  u.forEach((c,i)=>{c.pos=ps[i];c.el.style.order=c.pos;c.el.classList.remove('shake');void c.el.offsetWidth;c.el.classList.add('shake')});
+  $('#ms').textContent='¡Barajeo! Las cartas pendientes cambiaron de lugar.';timers.push(setTimeout(()=>{if($('#ms'))$('#ms').textContent=''},2500));
+ }
+ function finish(win,why){
+  if(over)return;over=true;clr();cards.forEach(c=>c.el.classList.add('f'));
+  const key=`mm_best_${theme}_${d}`,best=store.get(key,0);let extra='';
+  if(win){const r=moves/D.pairs,st=r<=1.7?3:r<=2.5?2:1;tone(880,.3);
+   if(!best||moves<best){store.set(key,moves);extra=' 🎉 ¡Récord!'}
+   $('#ms').innerHTML=`${'⭐'.repeat(st)}${'☆'.repeat(3-st)} · ¡Completado en ${moves} intentos!${extra} <br><span class="muted">Tablero n.º ${seed}</span>`;
+  }else $('#ms').textContent=`${why}. Encontraste ${found} de ${D.pairs} parejas.`;
+ }
+ $('#hint').onclick=()=>{if(over||lock||hints<=0)return;hints--;lock=true;const u=cards.filter(c=>!c.matched&&!c.el.classList.contains('f'));u.forEach(c=>c.el.classList.add('f'));hud();
+  timers.push(setTimeout(()=>{u.forEach(c=>c.el.classList.remove('f'));lock=false},1200))};
+ $('#rs').onclick=()=>start(seed);
+ $('#nw').onclick=()=>start(rnd(1,MAXSEED));
+ $('#mn').onclick=menu;
+}
+menu();
+</script>
+</body></html>

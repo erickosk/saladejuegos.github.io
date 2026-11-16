@@ -1,0 +1,217 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Duck Hunt</title><link rel="icon" href="../favicon.svg" type="image/svg+xml"><meta name="description" content="Juega Duck Hunt gratis en Sala de Juegos."><meta name="theme-color" content="#fff1e4">
+<link rel="stylesheet" href="../css/sala.css"><link rel="stylesheet" href="../css/mejoras.css"><link rel="stylesheet" href="../css/movil.css"><script src="../js/sala.js"></script><script src="../js/datos.js"></script></head>
+<body><style>
+.dh{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.dh-cv{position:relative;width:min(100%,760px,calc((100vh - 260px)*4/3));width:min(100%,760px,calc((100dvh - 260px)*4/3));min-width:280px;line-height:0}
+#cv{width:100%;height:auto;aspect-ratio:4/3;border-radius:16px;display:block;touch-action:none;cursor:crosshair;background:#fff6ec;box-shadow:0 8px 0 rgba(105,65,35,.2)}
+.dh-ov{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;line-height:1.4;background:rgba(255,250,246,.9);border-radius:16px;animation:fade .3s}
+.dh-ov.on{display:flex}.dh-ov h2{margin:0;font:600 34px var(--head);color:var(--text)}.dh-ov .big{font:600 58px/1.1 var(--head);color:#f55c7a}.dh-ov p{margin:0;color:var(--muted)}
+.dh-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.dh-bar .btn{margin:0;min-height:42px;padding:9px 18px;font-size:15px}
+.msg{text-align:center;min-height:24px;font-weight:700;color:#d9405f;margin:0}
+</style>
+<div class="wrap" style="--accent:#f57c73">
+ <div class="top"><a class="back" href="../index.html">‹ Menú</a><h1><img class="gi" src="../img/duckhunt.svg" alt=""><span>Duck Hunt</span></h1><div class="pill" id="scorePill">0</div></div>
+ <div class="panel game-host" id="gameHost"><div class="dh">
+  <div class="dh-cv"><canvas id="cv" aria-label="Escena de caza de patos: toca los patos para dispararles"></canvas><div class="dh-ov" id="ov"></div></div>
+  <div class="dh-bar"><button class="btn ghost" id="bPausa">Pausa</button><button class="btn ghost" id="bSon">Sonido: sí</button></div>
+ </div></div>
+ <p id="ms" class="msg" role="status"></p>
+ <p id="gameInfo" class="game-info"></p>
+ <div style="text-align:center"><button class="btn ghost" id="replay">Ver instrucciones</button></div>
+</div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s),pill=$('#scorePill'),cv=$('#cv'),ctx=cv.getContext('2d');
+const W=640,H=480,SUELO=372,K=Math.min(2,window.devicePixelRatio||1);
+cv.width=W*K;cv.height=H*K;
+/* ---------- Sonido ---------- */
+let _ac=null,sonido=true;try{sonido=localStorage.getItem('dh_son')!=='0'}catch(e){}
+const AC=()=>{const C=window.AudioContext||window.webkitAudioContext;_ac=_ac||new C();if(_ac.state==='suspended')_ac.resume();return _ac};
+const tono=(f,d=.08,t='square',v=.06,f2)=>{if(!sonido)return;try{const a=AC(),o=a.createOscillator(),g=a.createGain();o.type=t;o.frequency.setValueAtTime(f,a.currentTime);if(f2)o.frequency.exponentialRampToValueAtTime(f2,a.currentTime+d);g.gain.value=v;o.connect(g);g.connect(a.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);o.stop(a.currentTime+d)}catch(e){}};
+const disparoSnd=()=>{if(!sonido)return;try{const a=AC(),n=a.sampleRate*.14,buf=a.createBuffer(1,n,a.sampleRate),d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);const s=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();f.type='lowpass';f.frequency.value=1800;g.gain.value=.35;s.buffer=buf;s.connect(f);f.connect(g);g.connect(a.destination);s.start()}catch(e){}};
+const setSon=()=>{$('#bSon').textContent='Sonido: '+(sonido?'sí':'no')};setSon();
+$('#bSon').onclick=()=>{sonido=!sonido;try{localStorage.setItem('dh_son',sonido?'1':'0')}catch(e){}setSon();if(sonido)tono(600,.08)};
+
+/* ---------- Estado ---------- */
+let estado='idle',previo='vuelo',ronda=1,score=0,balas=3,patos=[],marcas=[],sig=0,tOla=0,tFase=0,perro=null,flashes=[],popups=[],nubes=[],hits=0,ultX=320,mejor=0;
+try{mejor=+localStorage.getItem('dh_best')||0}catch(e){}
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const necesarios=()=>[0,6,6,7,7,8,8,9][Math.min(ronda,7)];
+const vel=()=>Math.min(270,115+ronda*20);
+const tiempoOla=()=>Math.max(4.5,8-ronda*.4);
+const sumar=n=>{score+=n;pill.textContent=score};
+const info=()=>{$('#gameInfo').textContent=`Ronda ${ronda} · Patos ${hits}/10 (necesitas ${necesarios()}) · Mejor ${Math.max(mejor,score)}`};
+
+/* ---------- Escenario estático ---------- */
+let fondo,frente;
+function crearEscenario(){
+  const mk=()=>{const c=document.createElement('canvas');c.width=W*K;c.height=H*K;const x=c.getContext('2d');x.scale(K,K);return[c,x]};
+  let x;[fondo,x]=mk();
+  let g=x.createLinearGradient(0,0,0,SUELO);g.addColorStop(0,'#5db7ea');g.addColorStop(.7,'#a9dcf5');g.addColorStop(1,'#d9f1fb');x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle='rgba(255,246,190,.55)';x.beginPath();x.arc(520,95,58,0,7);x.fill();x.fillStyle='#ffe27a';x.beginPath();x.arc(520,95,36,0,7);x.fill();
+  const colina=(y,a,col,seed)=>{x.fillStyle=col;x.beginPath();x.moveTo(0,H);x.lineTo(0,y);for(let i=0;i<=W;i+=8)x.lineTo(i,y-a*(Math.sin(i/90+seed)*.5+Math.sin(i/37+seed*2)*.25+.5));x.lineTo(W,H);x.fill()};
+  colina(330,50,'#9ad37f',1);colina(350,38,'#7cc060',3);
+  const arbol=(tx,ty,s)=>{x.fillStyle='#7a5230';x.fillRect(tx-5*s,ty,10*s,50*s);x.fillStyle='#4f9e4a';[[0,-8,30],[-20,6,22],[20,6,22]].forEach(([dx,dy,r])=>{x.beginPath();x.arc(tx+dx*s,ty+dy*s,r*s,0,7);x.fill()});x.fillStyle='#3f8a3d';x.beginPath();x.arc(tx+8*s,ty-4*s,16*s,0,7);x.fill()};
+  arbol(96,282,1.05);arbol(252,300,.8);arbol(588,290,.95);
+  [frente,x]=mk();
+  x.fillStyle='#4f9a3f';x.beginPath();x.moveTo(0,H);x.lineTo(0,SUELO+14);for(let i=0;i<=W;i+=10)x.lineTo(i,SUELO+14+Math.sin(i/22)*5);x.lineTo(W,H);x.fill();
+  x.fillStyle='#3c8530';for(let i=-5;i<W;i+=14){const h=18+((i*37)%17);x.beginPath();x.moveTo(i,SUELO+26);x.lineTo(i+6,SUELO+26-h);x.lineTo(i+12,SUELO+26);x.fill()}
+  x.fillStyle='#69bb4a';for(let i=2;i<W;i+=22){const h=12+((i*53)%13);x.beginPath();x.moveTo(i,SUELO+34);x.lineTo(i+5,SUELO+34-h);x.lineTo(i+10,SUELO+34);x.fill()}
+  x.fillStyle='#5a3d28';x.fillRect(0,408,W,H-408);
+  x.fillStyle='#7a5230';x.fillRect(0,408,W,4);
+}
+/* ---------- Dibujo de personajes ---------- */
+const IMG={};['pato-atras','pato-ala','pato-frente','perro-cabeza','perro-cabeza-risa1','perro-cabeza-risa2','perro-oreja','perro-torso-arriba','perro-torso-abajo','perro-lado'].forEach(n=>{const i=new Image();i.src=RAIZ+'img/'+n+'.svg';IMG[n]=i});
+const lista=i=>i&&i.complete&&i.naturalWidth>0;
+function dibujaPato(px,py,dir,t,estadoP,esc=1){
+  const A=IMG['pato-atras'],L=IMG['pato-ala'],F=IMG['pato-frente'];if(!lista(A)||!lista(L)||!lista(F))return;
+  const S=78*esc,ox=-S*30/64,oy=-S*36/64,vuela=estadoP==='fly'||estadoP==='away';
+  ctx.save();ctx.translate(px,py);ctx.scale(dir,1);
+  if(estadoP==='fall')ctx.rotate(Math.PI*.9);
+  ctx.drawImage(A,ox,oy,S,S);
+  const ang=(vuela?Math.sin(t*16)*38-3:-28)*Math.PI/180,cx=ox+S*34/64,cy=oy+S*33/64;
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);ctx.translate(-cx,-cy);ctx.drawImage(L,ox,oy,S,S);ctx.restore();
+  ctx.drawImage(F,ox,oy,S,S);
+  if(estadoP==='hit'||estadoP==='fall'){const ex=ox+S*44/64,ey=oy+S*17.5/64,r=S*3.4/64;ctx.fillStyle='#f4ead8';ctx.beginPath();ctx.arc(ex,ey,r*1.25,0,7);ctx.fill();ctx.strokeStyle='#1d242b';ctx.lineWidth=Math.max(1.4,S*.03);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(ex-r*.8,ey-r*.8);ctx.lineTo(ex+r*.8,ey+r*.8);ctx.moveTo(ex+r*.8,ey-r*.8);ctx.lineTo(ex-r*.8,ey+r*.8);ctx.stroke()}
+  ctx.restore();
+}
+function perroFrente(x,yBase,ri,tp,n){
+  const TA=IMG[ri?'perro-torso-abajo':'perro-torso-arriba'],OR=IMG['perro-oreja'],CAB=IMG['perro-cabeza'],R1=IMG['perro-cabeza-risa1'],R2=IMG['perro-cabeza-risa2'];
+  if(![TA,OR,CAB,R1,R2].every(lista))return;
+  const sT=1.35,tw=96*sT,th=80*sT,hs=86;
+  ctx.save();ctx.translate(x+(ri?Math.sin(tp*38)*2.6:0),yBase);
+  ctx.drawImage(TA,-tw/2,-th,tw,th);
+  if(!ri&&n>0){ // patos sostenidos en alto, con un balanceo suave
+    [[-1,-tw/2+13*sT],[1,tw/2-13*sT]].slice(n===1?1:0).forEach(([d,hx],i)=>{
+      ctx.save();ctx.translate(hx+d*4,-th+11*sT-22);ctx.rotate(d*(.28+Math.sin(tp*7+i)*.1));dibujaPato(0,0,d,0,'hit',.82);ctx.restore()});
+  }
+  ctx.save();ctx.translate(0,-th+50+(ri?0:Math.sin(tp*9)*2));
+  ctx.rotate(ri?-.14+Math.sin(tp*7)*.16:Math.sin(tp*5)*.04);
+  const flap=ri?Math.sin(tp*30)*.6:Math.sin(tp*6)*.12;
+  [-1,1].forEach(d=>{ctx.save();ctx.translate(d*32,-22);ctx.scale(d,1);ctx.rotate(.35+flap);ctx.drawImage(OR,-15,-3,30,55);ctx.restore()});
+  ctx.drawImage(ri?(Math.floor(tp*9)%2?R1:R2):CAB,-hs/2,-hs/2,hs,hs);
+  ctx.restore();
+  if(ri){const f=Math.floor(tp*6)%2;ctx.fillStyle='#1d242b';ctx.font='700 20px Fredoka,sans-serif';ctx.textAlign='center';
+    ctx.save();ctx.translate(-72,-th-48-f*4);ctx.rotate(-.25);ctx.fillText(f?'¡JA!':'¡Ja!',0,0);ctx.restore();
+    ctx.save();ctx.translate(72,-th-48-(1-f)*4);ctx.rotate(.25);ctx.fillText(f?'¡Ja!':'¡JA!',0,0);ctx.restore()}
+  ctx.restore();
+}
+function perroPaseo(){ // al empezar la ronda: el perro olfatea, se asusta y salta al pasto
+  const t=3.1-tFase,L=IMG['perro-lado'];if(!lista(L)||t<0||t>3.05)return;
+  const dw=130,dh=81;let x,y=408,rot=0,ex=false;
+  if(t<1.7){const k=t/1.7;x=-70+k*390;y=408-Math.abs(Math.sin(t*9))*4;rot=Math.sin(t*9)*.04+.05}
+  else if(t<2.15){x=320;y=408;rot=.05;ex=true}
+  else{const u=(t-2.15)/.9;x=320+u*60;y=408-Math.sin(Math.min(1,u)*Math.PI)*110+(u>.55?(u-.55)/.45*70:0);rot=-.5+u*1.4}
+  ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.drawImage(L,-dw*.55,-dh,dw,dh);ctx.restore();
+  if(ex){ctx.fillStyle='#e8472f';ctx.font='700 40px Fredoka,sans-serif';ctx.textAlign='center';ctx.fillText('!',x+34,y-92-Math.sin(t*30)*3)}
+}
+function dibujaPerro(){
+  if(estado==='ready'&&ronda>=1)perroPaseo();
+  if(!perro)return;const p=perro,k=Math.min(1,p.t/p.dur);
+  const env=k<.18?k/.18:k>.82?(1-k)/.18:1,e=env*env*(3-2*env),yBase=372+(1-e)*230;
+  perroFrente(p.x,yBase,p.ri,p.t,p.n);
+}
+const dibujaHUD=t=>{
+  ctx.fillStyle='#fffaf6';ctx.font='700 11px sans-serif';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText('DISPAROS',22,430);
+  for(let i=0;i<3;i++){ctx.globalAlpha=i<balas?1:.28;ctx.fillStyle='#ffd8bf';ctx.beginPath();ctx.moveTo(24+i*20,468);ctx.lineTo(24+i*20,444);ctx.arc(29+i*20,444,5,Math.PI,0);ctx.lineTo(34+i*20,468);ctx.fill()}ctx.globalAlpha=1;
+  ctx.fillStyle='#fffaf6';ctx.fillText('PATOS',172,430);
+  for(let i=0;i<10;i++){const m=marcas[i],x=176+i*27;ctx.save();ctx.translate(x+10,452);ctx.scale(.62,.62);
+    if(m===1)dibujaPato(0,0,1,0,'hit',1);else{ctx.globalAlpha=m===2?.35:.9;ctx.strokeStyle='#fffaf6';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,0,21,13,0,0,7);ctx.stroke()}ctx.restore()}
+  ctx.fillStyle='#fffaf6';ctx.textAlign='right';ctx.fillText('RONDA '+ronda,W-22,430);ctx.font='700 22px sans-serif';ctx.fillText(String(score).padStart(6,'0'),W-22,458);
+};
+
+/* ---------- Lógica ---------- */
+function nuevaOla(){
+  const restantes=10-sig,n=Math.min(restantes,ronda<3?1:2);
+  patos=[];balas=3;tOla=0;
+  for(let i=0;i<n;i++){const dir=Math.random()<.5?-1:1,v=vel()*rnd(.9,1.1);patos.push({idx:sig+i,x:rnd(150,490),y:SUELO-6,vx:dir*v*.55,vy:-v*.85,dir,state:'fly',t:rnd(0,3),cambio:rnd(.5,1.1),vm:v,h:0})}
+  sig+=n;estado='vuelo';info();
+}
+function nuevaRonda(){sig=0;hits=0;marcas=Array(10).fill(0);perro=null;popups=[];estado='ready';tFase=3.1;$('#ms').textContent='';info();tono(520,.12,'triangle',.07);setTimeout(()=>tono(780,.18,'triangle',.07),130)}
+function nuevoJuego(){score=0;ronda=1;pill.textContent='0';$('#ov').classList.remove('on');nuevaRonda()}
+function disparar(x,y){
+  if(estado!=='vuelo'||balas<=0)return;
+  balas--;disparoSnd();flashes.push({x,y,t:0});
+  let tocado=false;
+  for(const p of patos){if(p.state!=='fly')continue;const dx=(x-p.x)/40,dy=(y-p.y)/30;if(dx*dx+dy*dy<=1){p.state='hit';p.t=0;tocado=true;hits++;marcas[p.idx]=1;const pts=500+100*(ronda-1);sumar(pts);popups.push({x:p.x,y:p.y-20,t:1,txt:'+'+pts});tono(700,.1,'square',.07);setTimeout(()=>tono(520,.1,'square',.07),90);info();break}}
+  if(!tocado)tono(150,.08,'sawtooth',.04);
+  if(balas===0&&patos.some(p=>p.state==='fly'))patos.forEach(p=>{if(p.state==='fly')escapar(p)});
+}
+function escapar(p){p.state='away';marcas[p.idx]=2;p.vx*=.3;p.vy=-300;if(!p.contado){p.contado=true;}}
+function terminarOla(){
+  estado='perro';const n=patos.filter(p=>p.state==='gone'&&marcas[p.idx]===1).length;
+  perro={x:Math.max(95,Math.min(545,ultX)),t:0,dur:n?1.9:2.3,n,ri:n===0};
+  tono(n?660:220,.12,'triangle',.07);if(!n)[0,1,2,3].forEach(i=>setTimeout(()=>tono(i%2?260:200,.1,'square',.05),i*120));
+}
+function finRonda(){
+  if(hits>=necesarios()){
+    estado='ronda-ok';tFase=2.6;let extra='';if(hits===10){sumar(5000);extra=' ¡Perfecta! +5000'}
+    $('#ms').textContent=`¡Completado: ronda ${ronda}!${extra}`;Sala.confetti(70);[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tono(f,.18,'triangle',.08),i*140));
+  }else finJuego();
+}
+function finJuego(){
+  estado='over';if(score>mejor){mejor=score;try{localStorage.setItem('dh_best',score)}catch(e){}}
+  const ov=$('#ov');ov.innerHTML=`<h2>¡Se escaparon!</h2><div class="big">${score}</div><p>${score>=mejor&&score>0?'¡Nuevo récord!':'Tu récord: '+mejor}</p><p>Ronda ${ronda}: ${hits} de 10 patos (necesitabas ${necesarios()})</p><div class="dh-bar" style="margin-top:10px"><button class="btn" id="otra">Jugar otra vez</button></div>`;
+  ov.classList.add('on');$('#otra').onclick=()=>{Sala.cancel();Sala.countdown(nuevoJuego)};info();[400,330,260,190].forEach((f,i)=>setTimeout(()=>tono(f,.2,'sawtooth',.06),i*170));
+}
+function actualizar(dt){
+  nubes.forEach(n=>{n.x+=n.v*dt;if(n.x>W+80)n.x=-90});
+  flashes.forEach(f=>f.t+=dt);flashes=flashes.filter(f=>f.t<.25);
+  popups.forEach(p=>p.t-=dt*1.1);popups=popups.filter(p=>p.t>0);
+  if(estado==='ready'){tFase-=dt;if(tFase<=0)nuevaOla();return}
+  if(estado==='ronda-ok'){tFase-=dt;if(tFase<=0){ronda++;nuevaRonda()}return}
+  if(estado==='perro'){perro.t+=dt;if(perro.t>=perro.dur){perro=null;if(sig>=10)finRonda();else nuevaOla()}return}
+  if(estado!=='vuelo')return;
+  tOla+=dt;
+  for(const p of patos){
+    p.t+=dt;
+    if(p.state==='fly'){
+      p.cambio-=dt;if(p.cambio<=0){p.cambio=rnd(.5,1.2);const a=rnd(-Math.PI*.9,-Math.PI*.1);p.vx=Math.cos(a)*p.vm;p.vy=Math.sin(a)*p.vm*.8}
+      p.x+=p.vx*dt;p.y+=p.vy*dt;
+      if(p.x<30){p.x=30;p.vx=Math.abs(p.vx)}if(p.x>W-30){p.x=W-30;p.vx=-Math.abs(p.vx)}
+      if(p.y<40){p.y=40;p.vy=Math.abs(p.vy)}if(p.y>SUELO-30){p.y=SUELO-30;p.vy=-Math.abs(p.vy)}
+      if(Math.abs(p.vx)>20)p.dir=p.vx>0?1:-1;
+      ultX=p.x;
+    }else if(p.state==='hit'){p.h+=dt;if(p.h>.35){p.state='fall';p.vy=60;tono(900,.6,'sine',.05,180)}ultX=p.x}
+    else if(p.state==='fall'){p.vy+=900*dt;p.y+=p.vy*dt;p.vx=0;if(p.y>=SUELO+8){p.state='gone';ultX=p.x}}
+    else if(p.state==='away'){p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.y<-60){p.state='gone'}}
+  }
+  if(tOla>tiempoOla()&&patos.some(p=>p.state==='fly'))patos.forEach(p=>{if(p.state==='fly')escapar(p)});
+  if(patos.length&&patos.every(p=>p.state==='gone'))terminarOla();
+}
+function dibujar(t){
+  ctx.setTransform(K,0,0,K,0,0);ctx.clearRect(0,0,W,H);
+  ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(fondo,0,0);ctx.setTransform(K,0,0,K,0,0);
+  ctx.fillStyle='rgba(255,250,246,.9)';nubes.forEach(n=>{ctx.beginPath();ctx.arc(n.x,n.y,18*n.s,0,7);ctx.arc(n.x+20*n.s,n.y-6*n.s,22*n.s,0,7);ctx.arc(n.x+44*n.s,n.y,17*n.s,0,7);ctx.arc(n.x+22*n.s,n.y+6*n.s,18*n.s,0,7);ctx.fill()});
+    patos.forEach(p=>{if(p.state!=='gone')dibujaPato(p.x,p.y,p.dir,p.t,p.state)});
+  dibujaPerro();
+  ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(frente,0,0);ctx.setTransform(K,0,0,K,0,0);
+  dibujaHUD(t);
+  flashes.forEach(f=>{ctx.globalAlpha=1-f.t/.25;ctx.strokeStyle='#f55c7a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(f.x,f.y,8+f.t*80,0,7);ctx.stroke();ctx.fillStyle='#fdf2ea';ctx.beginPath();ctx.arc(f.x,f.y,6,0,7);ctx.fill();ctx.globalAlpha=1});
+  popups.forEach(p=>{ctx.globalAlpha=Math.min(1,p.t*2);ctx.fillStyle='#4a2626';ctx.font='700 18px sans-serif';ctx.textAlign='center';ctx.fillText(p.txt,p.x,p.y-(1-p.t)*30);ctx.globalAlpha=1});
+  if(estado==='ready'){ctx.fillStyle='rgba(255,250,246,.78)';ctx.fillRect(170,150,300,100);ctx.fillStyle='#4a2626';ctx.font='600 40px Fredoka,sans-serif';ctx.textAlign='center';ctx.fillText('Ronda '+ronda,320,198);ctx.font='700 16px sans-serif';ctx.fillStyle='#8d5d52';ctx.fillText('Atrapa '+necesarios()+' de 10 patos',320,230)}
+  if(estado==='vuelo'&&tOla<1&&balas===3){ctx.fillStyle='#f55c7a';ctx.font='600 34px Fredoka,sans-serif';ctx.textAlign='center';ctx.fillText('¡DISPARA!',320,120)}
+  if(estado==='pause'){ctx.fillStyle='rgba(255,250,246,.85)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#4a2626';ctx.font='600 44px Fredoka,sans-serif';ctx.textAlign='center';ctx.fillText('Pausa',320,230);ctx.font='700 16px sans-serif';ctx.fillText('Toca para seguir',320,262)}
+}
+let ult=0;
+function bucle(ts){requestAnimationFrame(bucle);const dt=Math.min(.05,(ts-ult)/1000||0);ult=ts;if(estado!=='pause'&&estado!=='idle'&&estado!=='over')actualizar(dt);dibujar(ts/1000)}
+function pausar(){if(estado==='vuelo'||estado==='ready'||estado==='perro'||estado==='ronda-ok'){previo=estado;estado='pause';$('#bPausa').textContent='Seguir'}}
+function seguir(){if(estado==='pause'){estado=previo;$('#bPausa').textContent='Pausa'}}
+$('#bPausa').onclick=()=>estado==='pause'?seguir():pausar();
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pausar()});addEventListener('blur',pausar);
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();if(estado==='pause'){seguir();return}
+  const r=cv.getBoundingClientRect();disparar((e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height);
+});
+addEventListener('keydown',e=>{if(e.key==='p'||e.key==='P'){estado==='pause'?seguir():pausar()}});
+nubes=[{x:60,y:70,s:1,v:8},{x:300,y:120,s:.8,v:5},{x:470,y:50,s:1.1,v:10},{x:620,y:150,s:.7,v:6}];
+function intro(){Sala.cancel();if(estado!=='idle'&&estado!=='over')pausar();
+  Sala.intro({icon:'<img class="gi" src="../img/duckhunt.svg" alt="">',title:'Duck Hunt',sub:'Atrapa los patos antes de que escapen',accent:'#f57c73',
+   tips:['Toca (o haz clic) sobre un pato para dispararle. Tienes 3 disparos por tanda.','Cada ronda trae 10 patos: debes atrapar la cantidad que te piden.','Cada ronda es más rápida. ¡Atrapa los 10 y ganas un gran bono!'],
+   onBack:()=>{location.href=RAIZ+'index.html'},onStart:()=>{if(estado==='pause'){seguir()}else nuevoJuego()}})}
+$('#replay').onclick=()=>{$('#ov').classList.remove('on');estado='idle';intro()};
+crearEscenario();marcas=Array(10).fill(0);info();requestAnimationFrame(bucle);
+window.__dh={get estado(){return estado},get score(){return score},get ronda(){return ronda},get patos(){return patos},get balas(){return balas},get hits(){return hits},disparar,nuevoJuego,W,H,set tOla(v){tOla=v}};
+intro();
+})();
+</script></body></html>

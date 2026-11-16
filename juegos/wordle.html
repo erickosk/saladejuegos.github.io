@@ -1,0 +1,173 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Wordle</title><link rel="icon" href="../favicon.svg" type="image/svg+xml"><meta name="description" content="Juega Wordle gratis en Sala de Juegos."><meta name="theme-color" content="#fff1e4">
+<link rel="stylesheet" href="../css/sala.css"><link rel="stylesheet" href="../css/mejoras.css"><link rel="stylesheet" href="../css/movil.css"><script src="../js/sala.js"></script><script src="../js/datos.js"></script><script src="../js/wordle-palabras.js"></script></head>
+<body><style>
+.wd{max-width:520px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px}
+.wd-modo{display:flex;gap:8px;align-items:center;justify-content:space-between;width:100%;color:var(--muted);font-size:14px;font-weight:700}
+.wd-modo b{color:var(--text)}
+.wd-tablero{display:grid;grid-template-rows:repeat(6,1fr);gap:6px;width:min(100%,330px)}
+.wd-fila{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.wd-fila.sacude{animation:shake .4s}
+.wd-t{aspect-ratio:1;display:grid;place-items:center;border:2px solid rgba(105,65,35,0.3);border-radius:10px;background:#fffaf6;color:var(--text);font:600 clamp(26px,8vw,36px)/1 var(--head);text-transform:uppercase;transition:border-color .15s}
+.wd-t.l{border-color:rgba(105,65,35,0.5);animation:pop .18s var(--ease)}
+.wd-t.c,.wd-t.p,.wd-t.a{border-color:transparent}
+.wd-t.c{background:#7fc4a3;color:#1d242b}.wd-t.p{background:#e8b865;color:#1d242b}.wd-t.a{background:#4a5760;color:#f4ead8}
+.wd-t.gira{animation:wdflip .55s ease both}
+@keyframes wdflip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+.wd-tec{display:flex;flex-direction:column;gap:7px;width:100%;margin-top:4px}
+.wd-r{display:flex;gap:5px;justify-content:center}
+.wd-k{flex:1 1 0;min-width:0;height:52px;border:0;border-radius:10px;background:var(--panel2);color:var(--text);font:700 16px var(--body);cursor:pointer;text-transform:uppercase;padding:0;box-shadow:0 3px 0 rgba(0,0,0,.28);transition:transform .1s,background .2s;-webkit-tap-highlight-color:transparent}
+.wd-k:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.28)}
+.wd-k.g{flex:1.6;font-size:13px}
+.wd-k.c{background:#7fc4a3;color:#1d242b}.wd-k.p{background:#e8b865;color:#1d242b}.wd-k.a{background:#4a5760;color:#f4ead8}
+.wd-k svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+.wd-fin{width:100%;text-align:center;background:var(--deep);border-radius:20px;padding:16px;animation:rise .4s var(--out) backwards}
+.wd-fin h3{margin:0 0 4px;font:600 22px var(--head);text-transform:none;letter-spacing:0;color:var(--text)}
+.wd-fin .pal{font:600 30px var(--head);letter-spacing:.12em;color:var(--accent);text-transform:uppercase}
+.wd-fin p{margin:6px 0 0;color:var(--muted);font-size:14px}
+.wd-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.wd-bar .btn{margin:6px 0 0}
+.wd-st{width:100%;background:var(--deep);border-radius:20px;padding:16px;animation:rise .35s var(--out) backwards}
+.wd-st h3{margin:0 0 10px;text-align:center}
+.wd-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin-bottom:12px}
+.wd-nums b{display:block;font:600 24px var(--head)}.wd-nums small{color:var(--muted);font-size:12px}
+.wd-dist{display:grid;grid-template-columns:16px 1fr;gap:4px 8px;align-items:center;font-size:13px;font-weight:700}
+.wd-dist i{display:block;min-width:22px;padding:2px 8px;border-radius:6px;background:#4a5760;color:#f4ead8;font-style:normal;text-align:right}
+.wd-dist i.hoy{background:#7fc4a3;color:#1d242b}
+.wd-ayuda{width:100%;color:var(--muted);font-size:13.5px;line-height:1.5;background:var(--deep);border-radius:16px;padding:12px 16px}
+.wd-ayuda b{color:var(--text)}.wd-ayuda .m{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:4px}
+.msg{text-align:center;min-height:24px;font-weight:700;color:var(--gold);margin:0}
+@media(max-width:420px){.wd-k{height:48px;font-size:15px}.wd-r{gap:4px}.wd-tec{gap:6px}}
+</style>
+<div class="wrap" style="--accent:#f6ac69">
+ <div class="top"><a class="back" href="../index.html">‹ Menú</a><h1><img class="gi" src="../img/wordle.svg" alt=""><span>Wordle</span></h1><div class="pill" id="score">0</div></div>
+ <div class="panel" id="host"><div class="wd">
+  <div class="wd-modo"><span id="modo"></span><span id="cuenta"></span></div>
+  <p class="msg" id="ms" role="status" aria-live="polite"></p>
+  <div class="wd-tablero" id="tab" aria-label="Tablero"></div>
+  <div id="fin"></div>
+  <div class="wd-tec" id="tec"></div>
+  <div class="wd-bar"><button class="btn ghost" id="bSt">Estadísticas</button><button class="btn ghost" id="bAy">Cómo se juega</button></div>
+  <div id="extra" style="width:100%"></div>
+ </div></div>
+</div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s),pill=$('#score');
+let _ac=null;const tono=(f,d=.1)=>{try{const A=window.AudioContext||window.webkitAudioContext;_ac=_ac||new A();if(_ac.state==='suspended')_ac.resume();const o=_ac.createOscillator(),g=_ac.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(_ac.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,_ac.currentTime+d);o.stop(_ac.currentTime+d)}catch(e){}};
+/* ---------- Palabras ---------- */
+const nrm=w=>{w=w.toLowerCase().replace(/ñ/g,'\u0001').normalize('NFD').replace(/[\u0300-\u036f]/g,'');return w.replace(/\u0001/g,'ñ').toUpperCase()};
+const ES5=/^[A-ZÑ]{5}$/;
+const SOL=[...new Set(WORDLE_SOL.map(w=>[nrm(w),w]).filter(([n])=>ES5.test(n)).map(([n,w])=>n+'|'+w))].map(x=>x.split('|')).sort((a,b)=>a[0]<b[0]?-1:1);
+const VALID=new Set(SOL.map(x=>x[0]));
+WORDLE_EXTRA.forEach(w=>{const n=nrm(w);if(ES5.test(n))VALID.add(n)});
+WORDLE_PLURAL4.forEach(w=>{const n=nrm(w+'s');if(ES5.test(n))VALID.add(n)});
+(()=>{const E={ar:['o','as','a','amos','an','e','es','en','é','ó','aba','ado','ara','ase','ad'],er:['o','es','e','emos','en','éis','ía','ió','í','ido','iera','ed'],ir:['o','es','e','imos','en','ía','ió','í','ido','iera','id']};
+ WORDLE_VERBOS.forEach(v=>{const t=v.slice(-2),st=v.slice(0,-2);(E[t]||[]).forEach(e=>{const n=nrm(st+e);if(ES5.test(n))VALID.add(n)});const n=nrm(v);if(ES5.test(n))VALID.add(n)})})();
+const mulberry=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const BARAJA=(()=>{const a=SOL.slice(),r=mulberry(20260101);for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a})();
+const hoyIdx=()=>{const d=new Date();return Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(2026,0,1))/864e5)};
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- Estado ---------- */
+let modo='dia',dia=hoyIdx(),sol,solMostrar,filas=[],cur='',fin=false,gano=false,ocupado=false,pts=0,timer=null;
+const TECL=['QWERTYUIOP','ASDFGHJKLÑ','*ZXCVBNM<'];
+const estadoTecla={};
+
+function evaluar(g,s){const r=Array(5).fill('a'),n={};for(let i=0;i<5;i++){if(g[i]===s[i])r[i]='c';else n[s[i]]=(n[s[i]]||0)+1}
+ for(let i=0;i<5;i++)if(r[i]==='a'&&n[g[i]]>0){r[i]='p';n[g[i]]--}return r}
+
+let cuenta=false;
+function nueva(m){cuenta=true;Sala.cancel();Sala.countdown(()=>{cuenta=false;_nueva(m)})}
+function _nueva(m){
+  modo=m;clearInterval(timer);filas=[];cur='';fin=false;gano=false;ocupado=false;pts=0;for(const k in estadoTecla)delete estadoTecla[k];
+  if(m==='dia'){dia=hoyIdx();[sol,solMostrar]=BARAJA[dia%BARAJA.length]}
+  else{let p;do{p=SOL[Math.floor(Math.random()*SOL.length)]}while(p[0]===sol&&SOL.length>1);[sol,solMostrar]=p}
+  $('#ms').textContent='';$('#fin').innerHTML='';$('#extra').innerHTML='';pill.textContent='0';
+  armar();
+  if(m==='dia'){const g=ls.get('wd_dia',null);if(g&&g.d===dia){g.g.forEach(w=>{filas.push(w);pts+=puntosFila(w)});fin=g.done;gano=g.won;if(fin)pts=g.pts||pts;pintarTodo();pill.textContent=pts;if(fin)terminar(true)}}
+  $('#modo').innerHTML=m==='dia'?'Palabra del día <b>#'+(dia+1)+'</b>':'Modo práctica · <b>no cuenta para tu racha</b>';
+}
+function armar(){
+  $('#tab').innerHTML=Array.from({length:6},(_,r)=>`<div class="wd-fila" data-r="${r}">${'<div class="wd-t"></div>'.repeat(5)}</div>`).join('');
+  $('#tec').innerHTML=TECL.map(f=>`<div class="wd-r">${[...f].map(k=>k==='*'?'<button class="wd-k g" data-k="ENTER">Enter</button>':k==='<'?'<button class="wd-k g" data-k="BORRAR" aria-label="Borrar"><svg viewBox="0 0 24 24"><path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9l4 6M17 9l-4 6"/></svg></button>':`<button class="wd-k" data-k="${k}">${k}</button>`).join('')}</div>`).join('');
+}
+const fila=r=>$(`.wd-fila[data-r="${r}"]`);
+function pintarFila(r,palabra,res){[...fila(r).children].forEach((t,i)=>{t.textContent=palabra[i]||'';t.className='wd-t'+(palabra[i]?' l':'')+(res?' '+res[i]:'')})}
+function marcarTeclas(w,res){w.split('').forEach((l,i)=>{const o=estadoTecla[l],n=res[i];if(!o||(o==='a'&&n!=='a')||(o==='p'&&n==='c'))estadoTecla[l]=n});
+ document.querySelectorAll('.wd-k[data-k]').forEach(b=>{const e=estadoTecla[b.dataset.k];b.classList.remove('c','p','a');if(e)b.classList.add(e)})}
+function pintarTodo(){filas.forEach((w,r)=>{const res=evaluar(w,sol);pintarFila(r,w,res);marcarTeclas(w,res)});if(!fin)pintarFila(filas.length,cur)}
+const puntosFila=w=>evaluar(w,sol).reduce((s,x)=>s+(x==='c'?10:x==='p'?3:0),0);
+const msg=t=>{$('#ms').textContent=t};
+function sacudir(){const f=fila(filas.length);f.classList.remove('sacude');void f.offsetWidth;f.classList.add('sacude')}
+
+/* ---------- Entrada ---------- */
+function tecla(k){
+  if(cuenta||fin||ocupado)return;
+  if(k==='ENTER')return enviar();
+  if(k==='BORRAR'){cur=cur.slice(0,-1);pintarFila(filas.length,cur);return}
+  if(cur.length<5&&/^[A-ZÑ]$/.test(k)){cur+=k;msg('');pintarFila(filas.length,cur);tono(300+cur.length*40,.05)}
+}
+function enviar(){
+  if(cur.length<5){msg('Faltan letras');sacudir();return}
+  if(!VALID.has(cur)){msg('No está en mi lista de palabras');sacudir();tono(150,.12);return}
+  const w=cur,r=filas.length,res=evaluar(w,sol);filas.push(w);cur='';ocupado=true;msg('');
+  [...fila(r).children].forEach((t,i)=>{setTimeout(()=>{t.classList.add('gira');setTimeout(()=>{t.className='wd-t gira '+res[i]},270);tono(res[i]==='c'?660:res[i]==='p'?520:260,.08)},i*280)});
+  setTimeout(()=>{
+    ocupado=false;marcarTeclas(w,res);pts+=puntosFila(w);pill.textContent=pts;
+    if(w===sol){fin=true;gano=true}else if(filas.length===6){fin=true;gano=false}
+    if(fin){if(gano)pts+=(7-filas.length)*50;pill.textContent=pts}
+    if(modo==='dia')ls.set('wd_dia',{d:dia,g:filas,done:fin,won:gano,pts});
+    if(fin)terminar(false);
+  },5*280+350);
+}
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==='Enter'){e.preventDefault();tecla('ENTER')}
+  else if(e.key==='Backspace'){tecla('BORRAR')}
+  else if(e.key.length===1){const k=nrm(e.key);if(/^[A-ZÑ]$/.test(k))tecla(k)}
+});
+$('#tec').addEventListener('click',e=>{const b=e.target.closest('.wd-k');if(!b)return;b.blur();tecla(b.dataset.k)});
+
+/* ---------- Final ---------- */
+function stats(){return ls.get('wd_stats',{j:0,g:0,r:0,m:0,d:[0,0,0,0,0,0],u:-9})}
+function terminar(restaurado){
+  const n=filas.length;
+  if(!restaurado&&modo==='dia'){const s=stats();s.j++;if(gano){s.g++;s.r=(s.u===dia-1)?s.r+1:1;s.m=Math.max(s.m,s.r);s.d[n-1]++}else s.r=0;s.u=dia;ls.set('wd_stats',s)}
+  if(!restaurado){gano?(tono(784,.2),setTimeout(()=>tono(988,.3),160),Sala.confetti()):tono(140,.4)}
+  $('#ms').textContent=gano?`¡Ganaste en ${n} ${n===1?'intento':'intentos'}!`:'Se acabaron los intentos';
+  $('#fin').innerHTML=`<div class="wd-fin"><h3>${gano?['¡Genial!','¡Increíble!','¡Muy bien!','¡Buen trabajo!','¡Uf, por poco!','¡Justo a tiempo!'][n-1]:'Casi lo logras'}</h3>
+   <div class="pal">${solMostrar.toUpperCase()}</div><p>${gano?pts+' puntos':'La palabra era esta. ¡Mañana hay otra!'}</p>
+   <div class="wd-bar"><button class="btn" id="bSh">Compartir</button>${modo==='dia'?'<button class="btn ghost" id="bPr">Practicar otra palabra</button>':'<button class="btn" id="bPr">Otra palabra</button><button class="btn ghost" id="bDi">Palabra del día</button>'}</div>
+   ${modo==='dia'?'<p id="sig"></p>':''}</div>`;
+  $('#bSh').onclick=compartir;$('#bPr').onclick=()=>nueva('practica');if($('#bDi'))$('#bDi').onclick=()=>nueva('dia');
+  if(modo==='dia')cuentaAtras();
+}
+function cuentaAtras(){
+  clearInterval(timer);
+  const f=()=>{const d=new Date(),sig=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1),s=Math.max(0,Math.floor((sig-d)/1000)),p=x=>String(x).padStart(2,'0'),e=$('#sig');
+   if(e)e.textContent=`Nueva palabra en ${p(Math.floor(s/3600))}:${p(Math.floor(s/60)%60)}:${p(s%60)}`;if(s===0){clearInterval(timer)}};
+  f();timer=setInterval(f,1000);
+}
+function compartir(){
+  const em={c:'\u{1F7E9}',p:'\u{1F7E8}',a:'\u2B1B'};
+  const t=`Wordle de la Sala ${modo==='dia'?'#'+(dia+1):'(práctica)'} ${gano?filas.length:'X'}/6\n\n`+filas.map(w=>evaluar(w,sol).map(x=>em[x]).join('')).join('\n');
+  const ok=()=>msg('¡Resultado copiado! Pégalo donde quieras.');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,()=>msg('No pude copiar. Selecciona y copia a mano.'));
+  else{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){msg('No pude copiar.')}a.remove()}
+}
+$('#bSt').onclick=()=>{
+  const e=$('#extra');if(e.dataset.v==='st'){e.innerHTML='';e.dataset.v='';return}
+  const s=stats(),mx=Math.max(1,...s.d),hoy=modo==='dia'&&fin&&gano?filas.length-1:-1;e.dataset.v='st';
+  e.innerHTML=`<div class="wd-st"><h3>Tus estadísticas</h3><div class="wd-nums"><div><b>${s.j}</b><small>Jugadas</small></div><div><b>${s.j?Math.round(s.g/s.j*100):0}%</b><small>Victorias</small></div><div><b>${s.r}</b><small>Racha</small></div><div><b>${s.m}</b><small>Mejor racha</small></div></div>
+  <div class="wd-dist">${s.d.map((v,i)=>`<span>${i+1}</span><i class="${i===hoy?'hoy':''}" style="width:${Math.max(8,v/mx*100)}%">${v}</i>`).join('')}</div></div>`;
+};
+$('#bAy').onclick=()=>{
+  const e=$('#extra');if(e.dataset.v==='ay'){e.innerHTML='';e.dataset.v='';return}e.dataset.v='ay';
+  e.innerHTML=`<div class="wd-ayuda"><b>Adivina la palabra de 5 letras en 6 intentos.</b><br>Escribe una palabra real y pulsa Enter. Cada letra cambia de color:<br>
+  <span class="m" style="background:#7fc4a3"></span><b>Verde:</b> la letra está y en su lugar.<br><span class="m" style="background:#e8b865"></span><b>Amarillo:</b> la letra está, pero en otro lugar.<br><span class="m" style="background:#4a5760"></span><b>Gris:</b> la letra no está.<br>
+  Los acentos no cuentan. Hay una palabra nueva cada día para todos, y puedes practicar con otras sin afectar tu racha.</div>`;
+};
+window.__wd={get sol(){return sol},VALID,SOL};
+nueva('dia');
+})();
+</script></body></html>
