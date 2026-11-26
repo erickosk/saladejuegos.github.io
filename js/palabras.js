@@ -1,0 +1,31 @@
+/* Utilidades y banco de palabras compartidos por Scrabble, Ahorcado y Sopa de letras */
+const $=s=>document.querySelector(s);
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
+const fmt=n=>n.toLocaleString('es-MX');
+let _a=null;
+function tone(f,d=.15,t='sine',v=.12){try{_a=_a||new(window.AudioContext||window.webkitAudioContext)();const o=_a.createOscillator(),g=_a.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(_a.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,_a.currentTime+d);o.stop(_a.currentTime+d)}catch(e){}}
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+function mulberry(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function seg(el,items,val,cb){el.className='seg';el.innerHTML=items.map(([k,l])=>`<button data-k="${k}" class="${k===val?'on':''}">${l}</button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>{el.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));cb(b.dataset.k)})}
+const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+
+/* Base: sustantivos, adjetivos en -o y verbos regulares en -ar (sin tildes ni ñ) */
+const BN=`gato perro caballo vaca cerdo oveja cabra pollo pato gallo conejo raton tigre leon oso lobo zorro mono jirafa cebra delfin ballena tiburon pulpo cangrejo tortuga serpiente lagarto rana sapo abeja hormiga mosca mariposa arana buho aguila paloma loro cisne pavo foca morsa nutria ardilla burro toro
+pan queso leche huevo arroz sopa pasta carne pescado ensalada manzana pera uva fresa sandia melon naranja limon platano cereza durazno mango papaya aguacate tomate cebolla ajo papa zanahoria lechuga pepino maiz frijol lenteja galleta pastel helado dulce chocolate azucar sal miel mantequilla jugo cafe refresco tortilla taco tamal torta pizza hamburguesa
+mesa silla cama sofa puerta ventana techo pared piso cocina bano sala cuarto jardin escalera lampara espejo reloj alfombra cortina cojin almohada sabana manta estufa horno plato vaso taza cuchara tenedor cuchillo olla sarten botella jarra mueble armario cajon llave candado
+sol luna estrella cielo nube lluvia viento nieve rayo trueno mar rio lago playa isla monte cerro volcan valle bosque selva desierto campo flor rosa arbol hoja rama raiz fruto semilla piedra arena tierra fuego agua hielo roca cueva
+cabeza cara ojo nariz boca diente lengua oreja cuello hombro brazo codo mano dedo pecho espalda cintura pierna rodilla pie tobillo corazon cerebro hueso piel pelo barba
+camisa pantalon falda vestido zapato calcetin gorra sombrero bufanda guante abrigo chaqueta bolsa mochila cinturon corbata playera sudadera bota sandalia
+libro cuaderno lapiz pluma goma regla mapa pizarra tarea examen clase maestro alumno escuela colegio biblioteca papel tijera pegamento computadora teclado pantalla telefono camara radio television
+coche carro camion autobus tren avion barco bicicleta moto taxi metro puente calle carretera camino esquina semaforo estacion puerto aeropuerto
+doctor medico enfermero piloto cocinero panadero pintor musico cantante bailarin actor escritor policia bombero soldado juez abogado ingeniero granjero pescador carpintero
+dia noche manana tarde hora minuto semana mes ano verano invierno otono primavera ciudad pueblo pais mundo plaza parque tienda mercado banco hospital iglesia castillo palacio museo teatro cine circo estadio
+futbol beisbol tenis baloncesto natacion carrera juego pelota balon red meta premio equipo jugador campeon trofeo ajedrez dado carta
+amigo familia padre madre hermano abuelo tio primo nino nina bebe rey reina princesa dragon hada gigante tesoro pirata fantasma bruja brujo
+caja cuerda cadena martillo clavo tornillo escoba cubeta paraguas globo regalo moneda billete sobre sello foto cuadro vela antorcha bandera tambor guitarra piano violin flauta trompeta campana`.split(/\s+/);
+const BA=`alto bajo largo corto gordo flaco rapido lento nuevo viejo bonito feo limpio sucio frio seco mojado duro blando claro oscuro ancho estrecho pesado ligero lleno vacio abierto cerrado rico pobre tranquilo nervioso callado ruidoso cansado dormido despierto sano enfermo bueno malo guapo simpatico divertido aburrido serio gracioso listo tonto loco sabio curioso generoso honesto timido orgulloso perezoso rojo amarillo blanco negro morado rosado dorado plateado anaranjado redondo cuadrado puntiagudo delgado grueso profundo hondo cercano lejano antiguo moderno famoso conocido perdido escondido tapado roto pegajoso picoso salado amargo sabroso jugoso crudo cocido quemado helado opaco mudo sordo ciego cojo calvo rubio moreno rizado lacio peludo`.split(/\s+/);
+const BV=`cantar bailar saltar caminar hablar mirar escuchar llamar cocinar lavar limpiar pintar dibujar jugar nadar volar trabajar estudiar ayudar buscar encontrar pensar preguntar contestar cambiar cortar cuidar dejar disfrutar ganar gastar guardar imaginar invitar lanzar lograr llevar llegar mandar mostrar necesitar olvidar pagar parar pasar pegar peinar practicar preparar probar quedar quitar regalar regresar rezar saludar sonar tirar tocar tomar usar viajar visitar votar cenar desayunar almorzar bajar besar botar brillar bromear callar cargar celebrar charlar chocar cobrar colgar comprar contar copiar crear criar cruzar curar durar echar empujar enviar esperar explicar firmar formar gritar grabar ladrar llenar marcar ordenar orar pelear pesar pescar planear platicar tapar terminar tratar trepar`.split(/\s+/);
+const plu=w=>/[aeiou]$/.test(w)?w+'s':w.endsWith('z')?w.slice(0,-1)+'ces':w+'es';
+const WORDS=[...new Set([...BN.flatMap(w=>[w,plu(w),...(w.endsWith('o')&&w.length>3?[w.slice(0,-1)+'ito']:[])]),...BA.flatMap(w=>{const r=w.slice(0,-1);return[r+'o',r+'a',r+'os',r+'as']}),...BV.flatMap(v=>{const r=v.slice(0,-2);return[v,r+'ado',r+'ando',r+'aba',r+'aban',r+'amos',r+'aron']})])].filter(w=>w.length>=3&&/^[a-z]+$/.test(w));
+const WORDS_UP=WORDS.map(w=>w.toUpperCase());
